@@ -1,71 +1,72 @@
-var cheerio = require("cheerio");
-var axios = require("axios");
-var express = require("express");
-var mongojs = require("mongojs");
-var mongoose = require("mongoose");
+let cheerio = require("cheerio");
+let axios = require("axios");
+let express = require("express");
+let mongoose = require("mongoose");
+var exphbs = require("express-handlebars");
 
-
-var app = express();
-
-var databaseUrl = "CLads";
-var collections = ["scrapedData"];
-
-var PORT = process.env.PORT || 3000;
-
-
+let PORT = process.env.PORT || 3000;
+let app = express();
 app.use(express.urlencoded({
     extended: true
 }));
-app.use(express.json());
-// Make public a static folder
-app.use(express.static("public"));
+// app.use(express.json());
+// // Make public a static folder
+// app.use(express.static("public"));
+// Set Handlebars as the default templating engine.
+app.engine("handlebars", exphbs({
+    defaultLayout: "main"
+}));
+app.set("view engine", "handlebars");
 
+
+
+let db = require("./models");
 // If deployed, use the deployed database. Otherwise use the local mongoHeadlines database
-var MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost/mongoHeadlines";
-
-var db = mongojs(databaseUrl, collections);
-
+let MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost/clAds";
 // Connect to the Mongo DB
 mongoose.connect(MONGODB_URI, {
     useNewUrlParser: true
 });
 
-db.on("error", error => console.log("Database error: " + error));
-
 app.get("/", function (req, res) {
-    res.json("hello world");
-});
+    res.render("landing")
+})
 
 app.get("/listings", function (req, res) {
-    db.scrapedData.find({}, function (error, found) {
+
+    db.ClAds.find({}, function (error, found) {
         if (error) {
             console.log(error);
         } else {
-            res.json(found);
+            for (let i = 0; i < found.length; i++) {
+                res.render("templet");
+                //res.json(found);
+            }
         }
     });
 });
 
 app.get("/scrape", function (req, res) {
     axios.get("https://nh.craigslist.org/d/computer-parts/search/syp").then(response => {
-        var $ = cheerio.load(response.data);
-        var results = [];
+        let $ = cheerio.load(response.data);
+        
 
         $("p.result-info").each((i, element) => {
-            var title = $(element).children("a.result-title").text();
-            var price = $(element).children("span.result-meta").children("span.result-price").text();
+            let results = [];
+            let title = $(element).children("a.result-title").text();
+            let price = $(element).children("span.result-meta").children("span.result-price").text();
             results.push({
                 title: title,
                 price: price
             });
-
+            console.log(results);
+            db.ClAds.insert(results)
+                .then(dbAds => console.log(dbAds))
+                .catch(err => console.log(err));
+        })
         });
-       
-
-        console.log(results);
-        db.scrapedData.insert(results);
-    })
-    
+        
+    res.send("Scrape complete!")
 })
 
 app.listen(PORT, console.log("App running on port: " + PORT))
