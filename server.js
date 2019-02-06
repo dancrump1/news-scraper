@@ -10,7 +10,7 @@ var app = express();
 var databaseUrl = "CLads";
 var collections = ["scrapedData"];
 
-var PORT = 3000;
+var PORT = process.env.PORT || 3000;
 
 
 app.use(express.urlencoded({
@@ -30,7 +30,7 @@ mongoose.connect(MONGODB_URI, {
     useNewUrlParser: true
 });
 
-db.on("error", error => console.log("Database error: ", error));
+db.on("error", error => console.log("Database error: " + error));
 
 app.get("/", function (req, res) {
     res.json("hello world");
